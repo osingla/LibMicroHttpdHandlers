@@ -58,6 +58,18 @@ static int http_answer_to_connection( void *cls, struct MHD_Connection *connecti
 
     DEBUG("%s - %s - %s", method, url, version);
 
+	if (!strcmp(method, "GET")) {
+
+		bool is_a_file;
+		void const *what = handlers.search_get_handler(url, &is_a_file);
+		DEBUG("[%s]", what);
+		if (what) {
+			if (is_a_file)
+				return handlers.send_file(connection, url, (const char *)what);
+		}
+
+	}
+
     return MHD_NO;
 }								// Httpd::http_answer_to_connection
 
@@ -66,9 +78,12 @@ int main( int argc, char *argv[] ) {
 	DEBUG("");
     DEBUG("------- Starting test program -------");
     
+    handlers.set_file_get_handler("/", "examples/example1/index.html");
+    handlers.set_file_get_handler("/LinuxFromScratch.css", "examples/example1/LinuxFromScratch.css");
+    handlers.set_file_get_handler("/LinuxFromScratch.js", "examples/example1/LinuxFromScratch.css");
+    handlers.set_file_get_handler("/image1.png", "html1/image1.png");
+    handlers.set_file_get_handler("/favicon.ico", "examples/example1/favicon.ico");
     handlers.SET_GET_HANDLER("/test", test_page);
-    handlers.set_file_handler("/", "html1/index.html");
-    handlers.set_file_handler("/image1.png", "html1/image1.png");
 
     handlers.dump_handlers();
 
