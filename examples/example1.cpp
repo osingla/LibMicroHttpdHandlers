@@ -12,6 +12,7 @@ extern "C" {
 #include "../Logg.h"
 
 #include "LibMicroHttpdHandlers.h"
+#include "DataPrintf.h"
 
 #define HTTP_PORT 8088
 
@@ -36,11 +37,27 @@ static int test_page( void *cls, struct MHD_Connection *connection, char const *
 }	// test_page
 
 /**
+ * handle for /gps-geofence/get-values.xml
+ */
+int http_geofence_get_values_xml( void *cls, struct MHD_Connection *connection, char const *url ) {
+
+	DataPrintf xml;
+
+	xml.printf("<xmlstatus>");
+	xml.printf(" <values ");
+	xml.printf("   Lat=%lf", (double)35.780421);
+	xml.printf("   Lon=%lf", (double)-78.639214);
+	xml.printf(" />");
+	xml.printf("</xmlstatus>");
+
+	return xml.send(connection, "text/xml");
+}								// http_geofence_get_values_xml
+
+/**
  * TODO
  */
 static void http_request_completed( void *cls, struct MHD_Connection *connection,
 	void **con_cls, enum MHD_RequestTerminationCode toe ) {
-
 
 	if ( (con_cls == NULL) || (*con_cls == NULL) )
 		return;
@@ -48,30 +65,6 @@ static void http_request_completed( void *cls, struct MHD_Connection *connection
 //  DEBUG("... completed %s : toe=%d", __FUNCTION__, toe);
 
 }   // http_request_completed
-
-/**
- * TODO
- */
-static int http_answer_to_connection( void *cls, struct MHD_Connection *connection,
-	const char *url, const char *method, const char *version,
-	const char *upload_data, size_t *upload_data_size, void **con_cls ) {
-
-    DEBUG("%s - %s - %s", method, url, version);
-
-	if (!strcmp(method, "GET")) {
-
-		bool is_a_file;
-		void const *what = handlers.search_get_handler(url, &is_a_file);
-		DEBUG("[%s]", what);
-		if (what) {
-			if (is_a_file)
-				return handlers.send_file(connection, url, (const char *)what);
-		}
-
-	}
-
-    return MHD_NO;
-}								// Httpd::http_answer_to_connection
 
 int main( int argc, char *argv[] ) {
 
@@ -84,6 +77,8 @@ int main( int argc, char *argv[] ) {
     handlers.set_file_get_handler("/image1.png", "html1/image1.png");
     handlers.set_file_get_handler("/favicon.ico", "examples/example1/favicon.ico");
     handlers.SET_GET_HANDLER("/test", test_page);
+    handlers.SET_GET_HANDLER("/get-gps-pos.xml", http_geofence_get_values_xml);
+    handlers.set_dir_get_handler("/dojo", "examples/dojo/dojox/gesture");
 
     handlers.dump_handlers();
 
@@ -91,7 +86,7 @@ int main( int argc, char *argv[] ) {
 		MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG,
 		HTTP_PORT,
 		NULL, NULL,
-		http_answer_to_connection, NULL,
+		handlers.http_answer_to_connection, &handlers,
 		MHD_OPTION_NOTIFY_COMPLETED, http_request_completed, NULL,	// function called whenever a request has been completed
 		MHD_OPTION_CONNECTION_TIMEOUT, 0,							// no timeout
 		MHD_OPTION_EXTERNAL_LOGGER, httpd_log, NULL,

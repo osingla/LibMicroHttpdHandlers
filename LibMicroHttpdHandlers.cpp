@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include "Logg.h"
 
@@ -23,6 +24,9 @@ extern "C" {
  */
 LibMicroHttpdHandlers::LibMicroHttpdHandlers() {
 
+	// User data
+	user_data = NULL;
+
     // Current number of pairs {url,what}
     nb_pairs = 0;
     pairs = NULL;
@@ -34,6 +38,20 @@ LibMicroHttpdHandlers::LibMicroHttpdHandlers() {
  */
 LibMicroHttpdHandlers::~LibMicroHttpdHandlers() {
 }   // LibMicroHttpdHandlers::~LibMicroHttpdHandlers
+
+/**
+ * TODO
+ */
+void LibMicroHttpdHandlers::set_user_data( void *user_data) {
+	this->user_data = user_data;
+}	//
+
+/**
+ * TODO
+ */
+void *LibMicroHttpdHandlers::get_user_data() {
+	return user_data;
+}	// LibMicroHttpdHandlers::get_user_data
 
 /**
  * Return "GET:", "PUT:" or "POST:"
@@ -101,7 +119,44 @@ int LibMicroHttpdHandlers::set_file_get_handler(const char *url, const void *wha
 	qsort(pairs, nb_pairs, sizeof(pair_t), qsort_cmp_pair);
 
     return 0;
-}   // LibMicroHttpdHandlers:set_file_get_handler
+}   // LibMicroHttpdHandlers::set_file_get_handler
+
+/**
+ * TODO
+ */
+int LibMicroHttpdHandlers::add_dir_get_handler( char const *url, char const *dirname ) {
+
+	DIR *d = opendir(dirname);
+    if (d == NULL) {
+    	DEBUG("Directory %s - %m", dirname);
+    	return -1;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(d)) != NULL) {
+    	char *p = entry->d_name;
+        if ( !strcmp( p, "." ) || !strcmp( p, ".." ) )
+            continue;
+        int l = strlen(p);
+    	char new_url[strlen(url) + l + 80];
+    	sprintf(new_url, "%s/%s", url, p);
+    	char new_dirname[strlen(dirname) + l + 80];
+    	sprintf(new_dirname, "%s/%s", dirname, p);
+        if ((entry->d_type == DT_REG) && (access( new_dirname, F_OK ) == 0)) {
+        	if (access( new_dirname, F_OK ) == 0) {
+        		DEBUG( "%s   -->  %s", new_url, new_dirname );
+        		set_file_get_handler(strdup(new_url), strdup(new_dirname));
+//        		add(strdup(new_url), strdup(new_dirname));
+        	}
+        }
+        else if ((entry->d_type == DT_DIR) || (entry->d_type == DT_LNK)) {
+        	add_dir_get_handler(new_url, new_dirname);
+        }
+    }							// while
+
+    closedir(d);
+    return 0;
+}	//  LibMicroHttpdHandlers::add_dir_get_handler
 
 /**
  * TODO
@@ -354,3 +409,30 @@ int LibMicroHttpdHandlers::send_file( struct MHD_Connection *connection, const c
 	MHD_destroy_response( response );
 	return ret;
 }								// LibMicroHttpdHandlers::send_file
+
+/**
+ * TODO
+ */
+int LibMicroHttpdHandlers::http_answer_to_connection( void *cls, struct MHD_Connection *connection,
+	const char *url, const char *method, const char *version,
+	const char *upload_data, size_t *upload_data_size, void **con_cls ) {
+
+	LibMicroHttpdHandlers *handlers = (LibMicroHttpdHandlers *)cls;
+
+    DEBUG("%s - %s - %s", method, url, version);
+
+	if (!strcmp(method, "GET")) {
+
+		bool is_a_file;
+		void const *what = handlers->search_get_handler(url, &is_a_file);
+		DEBUG("[%s]", what);
+		if (what) {
+			if (is_a_file)
+				return handlers->send_file(connection, url, (const char *)what);
+		}
+
+	}
+
+    return MHD_NO;
+}	// LibMicroHttpdHandlers::Httpd::http_answer_to_connection
+

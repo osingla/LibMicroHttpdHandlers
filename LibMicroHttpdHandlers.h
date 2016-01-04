@@ -1,3 +1,5 @@
+#ifndef __HTML_PRINTF_H_
+#define __HTML_PRINTF_H_
 
 
 typedef struct LibMicroHttpdHandlers {
@@ -18,9 +20,18 @@ public:
 	LibMicroHttpdHandlers();                ///< Constructor
     ~LibMicroHttpdHandlers();               ///< Destructor
 
+    void set_user_data(
+    	void *user_data);					///< TODO
+
+    void *get_user_data();					///< TODO
+
     int set_file_get_handler(
         const char *url,
         const void *what);                 	///< Add a new handler
+
+    int add_dir_get_handler(
+        const char *url,
+        const char *dir);                 	///< Add a new handler (all file giving a directory)
 
 #define SET_GET_HANDLER(url, pf) set_get_handler(url, pf, #pf)
     int set_get_handler(
@@ -45,7 +56,19 @@ public:
 		const char *url,
 		const char *fname);					///< Send a file
 
+    static int http_answer_to_connection(
+    	void *cls,
+		struct MHD_Connection *connection,
+    	const char *url,
+		const char *method,
+		const char *version,
+    	const char *upload_data,
+		size_t *upload_data_size,
+		void **con_cls );					///< TODO
+
 private:
+
+    void *user_data;						///< Set with set_user_data - Get with get_user_data
 
     typedef struct {
         type_t type;						///< TYPE_GET | TYPE_PUT | TYPE_POST
@@ -93,3 +116,5 @@ private:
 		const char *page, int status_code );		///< TODO
 
 } LibMicroHttpdHandlers;
+
+#endif /* __HTML_PRINTF_H_ */

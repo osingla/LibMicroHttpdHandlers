@@ -15,6 +15,7 @@ CXXFLAGS = -Wall -g -O0 -std=gnu++0x -I../ -I./
 LDFLAGS = -l microhttpd 
 
 SOLIB = libmicrohttpdhandlers.so
+SOLIB_OBJS = LibMicroHttpdHandlers.o DataPrintf.o
 
 EXAMPLE1 = example1
 OBJEX1 = examples/example1.o
@@ -38,8 +39,8 @@ mrproper:
 %.o: %.cpp LibMicroHttpdHandlers.h
 	$(CXX) $(CXXFLAGS) -fPIC -c $< -o $@
         
-$(SOLIB): LibMicroHttpdHandlers.o
-	$(LD) -shared -soname $@ -o $@ $< $(LDFLAGS)
+$(SOLIB): $(SOLIB_OBJS)
+	$(LD) -shared -soname $@ -o $@ $(SOLIB_OBJS) $(LDFLAGS)
 
 example1.o: example1.cpp LibMicroHttpdHandlers.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
